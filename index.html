@@ -169,6 +169,17 @@
                     </div>
                 </section>
 
+                <!-- Expenses & Cash Flow -->
+                <section class="control-group">
+                    <h2>Expenses</h2>
+                    
+                    <div class="input-wrapper">
+                        <label for="living-expenses-profile">Living Expenses Schedule</label>
+                        <input type="text" id="living-expenses-profile" value="(2027-) 75000" placeholder="e.g. (2027-2035) 80000; (2036-) 60000">
+                        <small class="help-text">Include Rent, Food, Insurance premiums, out-of-pocket healthcare, and non-income taxes.</small>
+                    </div>
+                </section>
+
                 <!-- Historical MAGI -->
                 <section class="control-group">
                     <h2>Historical MAGI</h2>
@@ -231,76 +242,140 @@
                 <h3>System Notifications</h3>
                 <ul id="alerts-list"></ul>
             </div>
-
-            <!-- Charts Content -->
-            <div class="dashboard-grid">
-                <!-- Line Chart: Net Worth Projections -->
-                <div class="chart-container grid-span-2">
-                    <div class="chart-header">
-                        <h2>Net Worth Projections (To Age 95)</h2>
-                        <div class="chart-legend">
-                            <span class="legend-item baseline">Without Conversion</span>
-                            <span class="legend-item optimized">With Optimized Conversion</span>
-                        </div>
-                    </div>
-                    <div class="canvas-wrapper">
-                        <canvas id="netWorthChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Stacked Bar Chart: Brackets & Conversions -->
-                <div class="chart-container grid-span-2">
-                    <div class="chart-header">
-                        <h2>Annual Roth Conversions & Tax Brackets</h2>
-                        <div class="chart-legend">
-                            <span class="legend-item b10">10% Bracket</span>
-                            <span class="legend-item b12">12% Bracket</span>
-                            <span class="legend-item b22">22% Bracket</span>
-                            <span class="legend-item b24">24% Bracket</span>
-                            <span class="legend-item conversion">Roth Conversion</span>
-                        </div>
-                    </div>
-                    <div class="canvas-wrapper">
-                        <canvas id="taxBracketsChart"></canvas>
-                    </div>
-                </div>
+            <!-- Tab Navigation -->
+            <div class="tabs-container">
+                <nav class="tab-navigation">
+                    <button class="tab-nav-btn active" data-tab="conversions">Conversions & Taxes</button>
+                    <button class="tab-nav-btn" data-tab="cashflow">Cash Flow</button>
+                    <button class="tab-nav-btn" data-tab="balances">Account Balances</button>
+                    <button class="tab-nav-btn" data-tab="tax-breakdown">Tax View</button>
+                    <button class="tab-nav-btn" data-tab="details-table">Cash Detail</button>
+                </nav>
             </div>
 
-            <!-- Year-by-Year Detail Table -->
-            <div class="table-section">
-                <div class="table-header">
-                    <div class="table-title-group">
-                        <h2>Year-by-Year Account Detail</h2>
-                        <p class="table-subtitle" id="table-discount-note">IRA column shows pre-tax balance. Adjusted Net Worth discounts IRA by 22% to reflect embedded tax liability.</p>
-                    </div>
-                    <div class="table-tabs">
-                        <button id="tab-baseline" class="tab-btn active">No Conversion</button>
-                        <button id="tab-optimized" class="tab-btn">Optimized</button>
+            <!-- Tab Content Panes -->
+            <div class="tab-content">
+                <!-- Tab: Conversions & Taxes -->
+                <div id="tab-conversions" class="tab-pane active">
+                    <div class="dashboard-grid">
+                        <!-- Line Chart: Net Worth Projections -->
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h2>Net Worth Projections (To Age 95)</h2>
+                                <div class="chart-legend">
+                                    <span class="legend-item baseline">Without Conversion</span>
+                                    <span class="legend-item optimized">With Optimized Conversion</span>
+                                </div>
+                            </div>
+                            <div class="canvas-wrapper">
+                                <canvas id="netWorthChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Stacked Bar Chart: Conversions & Taxes -->
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h2>Roth Conversions & Tax Paid by Year</h2>
+                                <div class="chart-legend">
+                                    <span class="legend-item conversion">Roth Conversion</span>
+                                    <span class="legend-item tax-paid">Total Tax Paid</span>
+                                </div>
+                            </div>
+                            <div class="canvas-wrapper">
+                                <canvas id="conversionsTaxChart"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="table-scroll-wrapper">
-                    <table id="detail-table">
-                        <thead>
-                            <tr>
-                                <th>Year</th>
-                                <th>Age</th>
-                                <th>IRA (Pre-Tax)</th>
-                                <th>Roth IRA</th>
-                                <th>Brokerage</th>
-                                <th>Nominal Net Worth</th>
-                                <th class="col-adj">Adj. Net Worth ▾</th>
-                                <th>Roth Conversion</th>
-                                <th>RMD</th>
-                                <th>Total Tax</th>
-                                <th>Fed. Tax</th>
-                                <th>State Tax</th>
-                                <th>IRMAA</th>
-                                <th>AGI</th>
-                            </tr>
-                        </thead>
-                        <tbody id="detail-table-body">
-                        </tbody>
-                    </table>
+
+                <!-- Tab: Cash Flow -->
+                <div id="tab-cashflow" class="tab-pane">
+                    <div class="chart-container full-width">
+                        <div class="chart-header">
+                            <h2>Annual Cash Flow Projections</h2>
+                            <div class="radio-group chart-controls">
+                                <label><input type="radio" name="cashflow-view" value="net" checked> Net Cash Flow</label>
+                                <label><input type="radio" name="cashflow-view" value="inflow"> Inflow Breakdown</label>
+                                <label><input type="radio" name="cashflow-view" value="expense"> Expense Breakdown</label>
+                            </div>
+                        </div>
+                        <div class="canvas-wrapper large-canvas">
+                            <canvas id="cashFlowChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Account Balances -->
+                <div id="tab-balances" class="tab-pane">
+                    <div class="chart-container full-width">
+                        <div class="chart-header">
+                            <h2>Account Balance Breakouts</h2>
+                        </div>
+                        <div class="canvas-wrapper large-canvas">
+                            <canvas id="accountBalancesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Tax View -->
+                <div id="tab-tax-breakdown" class="tab-pane">
+                    <div class="chart-container full-width">
+                        <div class="chart-header">
+                            <h2>Tax Composition View</h2>
+                            <div class="radio-group chart-controls">
+                                <label><input type="radio" name="tax-view" value="total" checked> Total Breakdown</label>
+                                <label><input type="radio" name="tax-view" value="fed"> Federal Only</label>
+                                <label><input type="radio" name="tax-view" value="state"> State Only</label>
+                                <label><input type="radio" name="tax-view" value="ss"> SS Taxable</label>
+                                <label><input type="radio" name="tax-view" value="medicare"> Medicare / IRMAA</label>
+                            </div>
+                        </div>
+                        <div class="canvas-wrapper large-canvas">
+                            <canvas id="taxBreakdownChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Cash Detail (Table) -->
+                <div id="tab-details-table" class="tab-pane">
+                    <div class="table-section">
+                        <div class="table-header">
+                            <div class="table-title-group">
+                                <h2>Year-by-Year Account & Cash Detail</h2>
+                                <p class="table-subtitle" id="table-discount-note">IRA column shows pre-tax balance. Adjusted Net Worth discounts IRA by 22% to reflect embedded tax liability.</p>
+                            </div>
+                            <div class="table-tabs">
+                                <button id="tab-baseline" class="tab-btn active">No Conversion</button>
+                                <button id="tab-optimized" class="tab-btn">Optimized</button>
+                            </div>
+                        </div>
+                        <div class="table-scroll-wrapper">
+                            <table id="detail-table">
+                                <thead>
+                                    <tr>
+                                        <th>Year</th>
+                                        <th>Age</th>
+                                        <th>IRA (Pre-Tax)</th>
+                                        <th>Roth IRA</th>
+                                        <th>Brokerage</th>
+                                        <th>Nominal Net Worth</th>
+                                        <th class="col-adj">Adj. Net Worth ▾</th>
+                                        <th>Roth Conversion</th>
+                                        <th>RMD</th>
+                                        <th>Total Tax</th>
+                                        <th>Fed. Tax</th>
+                                        <th>State Tax</th>
+                                        <th>IRMAA</th>
+                                        <th>Living Expenses</th>
+                                        <th>Surplus Flow</th>
+                                        <th>AGI</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detail-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
