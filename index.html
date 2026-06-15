@@ -1,22 +1,194 @@
-<button id="toggle-sidebar-btn" class="sidebar-toggle" title="Toggle Input Panel">◂ Inputs</button>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roth Conversion Optimizer</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo"></div>
+                <h1>Roth Optimizer</h1>
+            </div>
+
+            <div class="sidebar-scroll">
+                <section class="control-group">
+                    <h2>Timeline Assumptions</h2>
+                    <div class="input-wrapper">
+                        <label for="birth-year">Birth Year</label>
+                        <input type="number" id="birth-year" min="1930" max="2010" value="1961">
+                        <span class="help-text">Used to automatically lock in your standard legal RMD age milestones.</span>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="start-year">Analysis Start Year</label>
+                        <input type="number" id="start-year" min="2024" max="2050" value="2027">
+                        <span class="help-text">First year of simulation (e.g., 2027 to avoid ACA subsidy clawbacks).</span>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="retirement-age">Retirement Age</label>
+                        <input type="number" id="retirement-age" min="50" max="85" value="61">
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="filing-status">Filing Status</label>
+                        <select id="filing-status">
+                            <option value="single">Single</option>
+                            <option value="mfj" selected>Married Filing Jointly</option>
+                        </select>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="state-residence">State Residence</label>
+                        <select id="state-residence">
+                            <option value="CA">California (CA)</option>
+                            <option value="NY">New York (NY)</option>
+                            <option value="PA">Pennsylvania (PA)</option>
+                            <option value="NC">North Carolina (NC)</option>
+                        </select>
+                    </div>
+                </section>
+
+                <section class="control-group">
+                    <h2>Starting Assets</h2>
+                    <div class="input-wrapper">
+                        <label for="ira-balance">Traditional IRA</label>
+                        <div class="dual-input">
+                            <input type="range" id="ira-balance-slider" min="0" max="5000000" step="10000" value="1250000">
+                            <input type="number" id="ira-balance" value="1250000">
+                        </div>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="roth-balance">Roth IRA</label>
+                        <div class="dual-input">
+                            <input type="range" id="roth-balance-slider" min="0" max="3000000" step="10000" value="50000">
+                            <input type="number" id="roth-balance" value="50000">
+                        </div>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="brokerage-balance">Taxable Brokerage</label>
+                        <div class="dual-input">
+                            <input type="range" id="brokerage-balance-slider" min="0" max="5000000" step="10000" value="400000">
+                            <input type="number" id="brokerage-balance" value="400000">
+                        </div>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="brokerage-basis">Brokerage Cost Basis</label>
+                        <div class="dual-input">
+                            <input type="range" id="brokerage-basis-slider" min="0" max="5000000" step="10000" value="250000">
+                            <input type="number" id="brokerage-basis" value="250000">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="control-group">
+                    <h2>Growth & Inflation</h2>
+                    <div class="input-wrapper">
+                        <label for="annual-return">Annual Growth Return (%)</label>
+                        <div class="dual-input">
+                            <input type="range" id="annual-return-slider" min="0" max="15" step="0.1" value="6.5">
+                            <input type="number" id="annual-return" value="6.5">
+                        </div>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="dividend-yield">Annual Dividend Yield (%)</label>
+                        <div class="dual-input">
+                            <input type="range" id="dividend-yield-slider" min="0" max="5" step="0.1" value="2.0">
+                            <input type="number" id="dividend-yield" value="2.0">
+                        </div>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="inflation-rate">Bracket Inflation Rate (%)</label>
+                        <div class="dual-input">
+                            <input type="range" id="inflation-rate-slider" min="0" max="8" step="0.1" value="2.5">
+                            <input type="number" id="inflation-rate" value="2.5">
+                        </div>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="ira-discount-rate">Pre-Tax Asset Haircut Discount (%)</label>
+                        <div class="dual-input">
+                            <input type="range" id="ira-discount-rate-slider" min="0" max="40" step="0.5" value="15">
+                            <input type="number" id="ira-discount-rate" value="15">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="control-group">
+                    <h2>Income Streams & Outflows</h2>
+                    <div class="input-wrapper">
+                        <label for="social-security-profile">Social Security Schedule Profile</label>
+                        <input type="text" id="social-security-profile" value="(2028-2095) 45000" placeholder="(Start-End) Amount; ...">
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="pension-profile">Pension / Fixed Ordinary Income</label>
+                        <input type="text" id="pension-profile" value="(2027-2095) 12000" placeholder="(Start-End) Amount; ...">
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="capgains-profile">Baseline External Capital Gains</label>
+                        <input type="text" id="capgains-profile" value="(2027-2095) 0">
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="living-expenses-profile">Annual Target Living Expenses</label>
+                        <input type="text" id="living-expenses-profile" value="(2027-2095) 85000">
+                        <span class="help-text">Includes basic living costs, rent/mortgage, food, and baseline out-of-pocket healthcare.</span>
+                    </div>
+                </section>
+
+                <section class="control-group">
+                    <div class="section-header-row">
+                        <h2>Historical Income</h2>
+                        <div class="tooltip-container">
+                            <span class="tooltip-trigger">ⓘ What is this?</span>
+                            <div class="tooltip-content">
+                                <strong>Medicare IRMAA MAGI Formula:</strong><br>
+                                Add your <strong>Form 1040 Line 11</strong> (Adjusted Gross Income) + <strong>Line 2a</strong> (Tax-Exempt Interest). Enter those values below.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="magi-2yr">MAGI 2 Years Prior</label>
+                        <input type="number" id="magi-2yr" value="95000">
+                        <span class="help-text">From Form 1040 (Lines 11 + 2a). Dictates your Year 1 Medicare premiums.</span>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="magi-1yr">MAGI 1 Year Prior</label>
+                        <input type="number" id="magi-1yr" value="98000">
+                        <span class="help-text">From Form 1040 (Lines 11 + 2a). Dictates your Year 2 Medicare premiums.</span>
+                    </div>
+                </section>
+
+                <button id="optimize-btn" class="primary-btn">Compute Optimal Roth Strategy</button>
+            </div>
+        </aside>
+
+        <button id="toggle-sidebar-btn" class="sidebar-toggle" title="Toggle Input Panel">◂ Hide Inputs</button>
 
         <main class="content-area">
             <header class="top-bar">
-                <div class="metrics-summary">
-                    <div class="metric-card highlight">
-                        <span class="metric-label">Optimized Net Worth (Age 95)</span>
-                        <div id="metric-networth-optimized" class="metric-value">$0</div>
-                        <span class="metric-sub">Baseline: <span id="metric-networth-baseline">$0</span></span>
+                <div class="metrics-summary-strip">
+                    <div class="summary-item">
+                        <span class="item-label">Ending Net Worth (Age 95)</span>
+                        <div class="item-value-group">
+                            <span id="metric-networth-optimized" class="item-value color-opt">$0</span>
+                            <span class="item-vs">vs <span id="metric-networth-baseline">$0</span> (Baseline)</span>
+                        </div>
                     </div>
-                    <div class="metric-card highlight-purple">
-                        <span class="metric-label">Adjusted Net Worth (After Tax Drag)</span>
-                        <div id="metric-adj-optimized" class="metric-value">$0</div>
-                        <span id="metric-adj-subtitle" class="metric-sub">Baseline: <span id="metric-adj-baseline">$0</span></span>
+                    <div class="summary-divider"></div>
+                    <div class="summary-item">
+                        <span class="item-label">Tax-Adjusted Net Worth</span>
+                        <div class="item-value-group">
+                            <span id="metric-adj-optimized" class="item-value color-adj">$0</span>
+                            <span class="item-vs">vs <span id="metric-adj-baseline">$0</span> (Baseline)</span>
+                        </div>
                     </div>
-                    <div class="metric-card highlight-cyan">
-                        <span class="metric-label">Conversion Strategy Benefit</span>
-                        <div id="metric-benefit" class="metric-value">$0</div>
-                        <span class="metric-sub">Total wealth variance vs baseline</span>
+                    <div class="summary-divider"></div>
+                    <div class="summary-item">
+                        <span class="item-label">Net Conversion Strategy Benefit</span>
+                        <div id="metric-benefit" class="item-value color-benefit">$0</div>
                     </div>
                 </div>
             </header>
@@ -44,7 +216,7 @@
                 <div id="tab-cashflow" class="tab-content">
                     <div class="card chart-container full-width">
                         <div class="card-header">
-                            <h3>Annual System Cash Flows</h3>
+                            <h3>Annual Portfolio Cash Flows</h3>
                             <div class="chart-controls">
                                 <label><input type="radio" name="cashflow-view" value="net" checked> Net Flow</label>
                                 <label><input type="radio" name="cashflow-view" value="inflow"> Inflows Only</label>
@@ -130,9 +302,15 @@
                     </div>
                 </div>
 
-                <div id="alerts-panel" class="alert-box warning-box hidden">
-                    <h4>System Optimization Diagnostics & Guardrails</h4>
-                    <ul id="alerts-list"></ul>
+                <div id="alerts-panel" class="strategy-summary-card hidden">
+                    <div class="summary-header">
+                        <h4>Plan Performance Strategy Diagnostics</h4>
+                    </div>
+                    <div id="strategy-metrics-grid" class="strategy-grid"></div>
                 </div>
             </div>
         </main>
+    </div>
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>
