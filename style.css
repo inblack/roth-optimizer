@@ -639,3 +639,36 @@ input[type="number"]:focus, select:focus, input[type="text"]:focus {
         height: 1px;
     }
 }
+
+/* Tooltip structural design additions */
+.label-with-tooltip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+}
+.tooltip-trigger {
+    color: #3b82f6;
+    cursor: help;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+.tooltip-content {
+    display: none;
+    position: absolute;
+    bottom: 125%;
+    left: 0;
+    width: 260px;
+    background: #13151c;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 10px;
+    border-radius: 6px;
+    color: #9ca3af;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.label-with-tooltip:hover .tooltip-content {
+    display: block;
+}

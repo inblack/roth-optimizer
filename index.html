@@ -22,260 +22,245 @@
                 <section class="control-group">
                     <h2>Timeline Assumptions</h2>
                     <div class="input-wrapper">
-                        <label for="birth-year">Birth Year</label>
+                        <label for=\"birth-year\">Birth Year</label>
                         <input type="number" id="birth-year" min="1930" max="2010" value="1961">
                         <span class="help-text">Used to automatically lock in your standard legal RMD age milestones.</span>
                     </div>
                     <div class="input-wrapper">
                         <label for="start-year">Analysis Start Year</label>
-                        <input type="number" id="start-year" min="2024" max="2050" value="2027">
-                        <span class="help-text">First year of simulation (e.g., 2027 to avoid ACA subsidy clawbacks).</span>
+                        <input type="number" id="start-year" min="2020" max="2050" value="2027">
+                        <span class="help-text">The calendar year matching the initiation period of your plan.</span>
                     </div>
                     <div class="input-wrapper">
-                        <label for="retirement-age">Retirement Age</label>
-                        <input type="number" id="retirement-age" min="50" max="85" value="61">
+                        <label for="retirement-age">Retirement Target Age</label>
+                        <input type="number" id="retirement-age" min="50" max="80" value="61">
+                        <span class="help-text">Age when standard payroll stop and alternative cash flows initialize.</span>
                     </div>
+                </section>
+
+                <section class="control-group">
+                    <h2>Filing Context</h2>
                     <div class="input-wrapper">
-                        <label for="filing-status">Filing Status</label>
+                        <label for="filing-status">Tax Filing Status</label>
                         <select id="filing-status">
-                            <option value="single">Single</option>
-                            <option value="mfj" selected>Married Filing Jointly</option>
+                            <option value="single">Single Filer</option>
+                            <option value="mfj" selected>Married Filing Jointly (MFJ)</option>
                         </select>
                     </div>
                     <div class="input-wrapper">
-                        <label for="state-residence">State Residence</label>
+                        <label for="state-residence">State of Residence</label>
                         <select id="state-residence">
-                            <option value="CA">California (CA)</option>
-                            <option value="NY">New York (NY)</option>
-                            <option value="PA">Pennsylvania (PA)</option>
-                            <option value="NC">North Carolina (NC)</option>
+                            <option value="none">No Income Tax State (e.g., TX/FL/NV)</option>
+                            <option value="PA">Pennsylvania (3.07% Flat)</option>
+                            <option value="NC">North Carolina (4.5% Flat)</option>
+                            <option value="CA">California (Progressive Bracket System)</option>
                         </select>
                     </div>
                 </section>
 
                 <section class="control-group">
-                    <h2>Starting Assets</h2>
-                    <div class="input-wrapper">
-                        <label for="ira-balance">Traditional IRA</label>
-                        <div class="dual-input">
-                            <input type="range" id="ira-balance-slider" min="0" max="5000000" step="10000" value="1250000">
-                            <input type="number" id="ira-balance" value="1250000">
-                        </div>
+                    <h2>Asset Portfolio Pools</h2>
+                    <div class="input-group">
+                        <label for="ira-balance">Pre-Tax Traditional IRA ($)</label>
+                        <input type="number" id="ira-balance" value="1100000">
+                        <input type="range" id="ira-balance-slider" min="0" max="10000000" step="50000">
                     </div>
-                    <div class="input-wrapper">
-                        <label for="roth-balance">Roth IRA</label>
-                        <div class="dual-input">
-                            <input type="range" id="roth-balance-slider" min="0" max="3000000" step="10000" value="50000">
-                            <input type="number" id="roth-balance" value="50000">
-                        </div>
+                    <div class="input-group">
+                        <label for="roth-balance">Tax-Free Roth IRA ($)</label>
+                        <input type="number" id="roth-balance" value="80000">
+                        <input type="range" id="roth-balance-slider" min="0" max="5000000" step="10000">
                     </div>
-                    <div class="input-wrapper">
-                        <label for="brokerage-balance">Taxable Brokerage</label>
-                        <div class="dual-input">
-                            <input type="range" id="brokerage-balance-slider" min="0" max="5000000" step="10000" value="400000">
-                            <input type="number" id="brokerage-balance" value="400000">
-                        </div>
+                    <div class="input-group">
+                        <label for="brokerage-balance">Taxable Brokerage Balance ($)</label>
+                        <input type="number" id="brokerage-balance" value="1400000">
+                        <input type="range" id="brokerage-balance-slider" min="0" max="10000000" step="50000">
                     </div>
-                    <div class="input-wrapper">
-                        <label for="brokerage-basis">Brokerage Cost Basis</label>
-                        <div class="dual-input">
-                            <input type="range" id="brokerage-basis-slider" min="0" max="5000000" step="10000" value="250000">
-                            <input type="number" id="brokerage-basis" value="250000">
-                        </div>
-                    </div>
-                </section>
-
-                <section class="control-group">
-                    <h2>Growth & Inflation</h2>
-                    <div class="input-wrapper">
-                        <label for="annual-return">Annual Growth Return (%)</label>
-                        <div class="dual-input">
-                            <input type="range" id="annual-return-slider" min="0" max="15" step="0.1" value="6.5">
-                            <input type="number" id="annual-return" value="6.5">
-                        </div>
-                    </div>
-                    <div class="input-wrapper">
-                        <label for="dividend-yield">Annual Dividend Yield (%)</label>
-                        <div class="dual-input">
-                            <input type="range" id="dividend-yield-slider" min="0" max="5" step="0.1" value="2.0">
-                            <input type="number" id="dividend-yield" value="2.0">
-                        </div>
-                    </div>
-                    <div class="input-wrapper">
-                        <label for="inflation-rate">Bracket Inflation Rate (%)</label>
-                        <div class="dual-input">
-                            <input type="range" id="inflation-rate-slider" min="0" max="8" step="0.1" value="2.5">
-                            <input type="number" id="inflation-rate" value="2.5">
-                        </div>
-                    </div>
-                    <div class="input-wrapper">
-                        <label for="ira-discount-rate">Pre-Tax Asset Haircut Discount (%)</label>
-                        <div class="dual-input">
-                            <input type="range" id="ira-discount-rate-slider" min="0" max="40" step="0.5" value="15">
-                            <input type="number" id="ira-discount-rate" value="15">
-                        </div>
-                    </div>
-                </section>
-
-                <section class="control-group">
-                    <h2>Income Streams & Outflows</h2>
-                    <div class="input-wrapper">
-                        <label for="social-security-profile">Social Security Schedule Profile</label>
-                        <input type="text" id="social-security-profile" value="(2028-2095) 45000" placeholder="(Start-End) Amount; ...">
-                    </div>
-                    <div class="input-wrapper">
-                        <label for="pension-profile">Pension / Fixed Ordinary Income</label>
-                        <input type="text" id="pension-profile" value="(2027-2095) 12000" placeholder="(Start-End) Amount; ...">
-                    </div>
-                    <div class="input-wrapper">
-                        <label for="capgains-profile">Baseline External Capital Gains</label>
-                        <input type="text" id="capgains-profile" value="(2027-2095) 0">
-                    </div>
-                    <div class="input-wrapper">
-                        <label for="living-expenses-profile">Annual Target Living Expenses</label>
-                        <input type="text" id="living-expenses-profile" value="(2027-2095) 85000">
-                        <span class="help-text">Includes basic living costs, rent/mortgage, food, and baseline out-of-pocket healthcare.</span>
-                    </div>
-                </section>
-
-                <section class="control-group">
-                    <div class="section-header-row">
-                        <h2>Historical Income</h2>
-                        <div class="tooltip-container">
-                            <span class="tooltip-trigger">ⓘ What is this?</span>
+                    <div class="input-group">
+                        <div class="label-with-tooltip">
+                            <label for="tax-free-shield">Tax-Free Liquidity Shield ($)</label>
+                            <span class="tooltip-trigger">ⓘ</span>
                             <div class="tooltip-content">
-                                <strong>Medicare IRMAA MAGI Formula:</strong><br>
-                                Add your <strong>Form 1040 Line 11</strong> (Adjusted Gross Income) + <strong>Line 2a</strong> (Tax-Exempt Interest). Enter those values below.
+                                Enter the sum of your available cash, zero-gain stock lots, and accrued capital losses (e.g., your $36,000 of harvested losses). The simulation draws from this pool first to completely eliminate accidental capital gains tax spirals during early conversions.
                             </div>
                         </div>
-                    </div>
-                    <div class="input-wrapper">
-                        <label for="magi-2yr">MAGI 2 Years Prior</label>
-                        <input type="number" id="magi-2yr" value="95000">
-                        <span class="help-text">From Form 1040 (Lines 11 + 2a). Dictates your Year 1 Medicare premiums.</span>
-                    </div>
-                    <div class="input-wrapper">
-                        <label for="magi-1yr">MAGI 1 Year Prior</label>
-                        <input type="number" id="magi-1yr" value="98000">
-                        <span class="help-text">From Form 1040 (Lines 11 + 2a). Dictates your Year 2 Medicare premiums.</span>
+                        <input type="number" id="tax-free-shield" value="176000">
+                        <input type="range" id="tax-free-shield-slider" min="0" max="1000000" step="5000">
                     </div>
                 </section>
 
-                <button id="optimize-btn" class="primary-btn">Compute Optimal Roth Strategy</button>
+                <section class="control-group">
+                    <h2>Market Economics</h2>
+                    <div class="input-group">
+                        <label for="annual-return">Annual Nominal Growth (%)</label>
+                        <input type="number" id="annual-return" value="7.0" step="0.1">
+                        <input type="range" id="annual-return-slider" min="0" max="15" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label for="dividend-yield">Brokerage Dividend Yield (%)</label>
+                        <input type="number" id="dividend-yield" value="2.0" step="0.1">
+                        <input type="range" id="dividend-yield-slider" min="0" max="5" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label for="inflation-rate">Annual Inflation Rate (%)</label>
+                        <input type="number" id="inflation-rate" value="2.5" step="0.1">
+                        <input type="range" id="inflation-rate-slider" min="0" max="8" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label for="ira-discount-rate">Inheritance Tax Haircut (%)</label>
+                        <input type="number" id="ira-discount-rate" value="25.0" step="0.5">
+                        <input type="range" id="ira-discount-rate-slider" min="0" max="50" step="0.5">
+                    </div>
+                </section>
+
+                <section class="control-group">
+                    <h2>Cash Flow Inflows & Expenses Profiles</h2>
+                    <div class="input-wrapper">
+                        <label for="social-security-profile">Social Security Stream</label>
+                        <select id="social-security-profile">
+                            <option value="none">No Social Security Benefit Stream</option>
+                            <option value="standard" selected>Standard Retirement Age 67 Start ($45,000/yr)</option>
+                            <option value="delayed">Maximized Delay to Age 70 Start ($55,000/yr)</option>
+                        </select>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="pension-profile">Fixed Corporate Pension</label>
+                        <select id="pension-profile">
+                            <option value="none" selected>No Pension Inflow Stream</option>
+                            <option value="standard">Standard Age 65 Start ($25,000/yr)</option>
+                        </select>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="capgains-profile">Forced Capital Gains Sales</label>
+                        <select id="capgains-profile">
+                            <option value="none" selected>No Independent Forced Sales Plan</option>
+                        </select>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="living-expenses-profile">Annual Net Living Expenses</label>
+                        <select id="living-expenses-profile">
+                            <option value="standard" selected>Standard Cost of Living Baseline ($85,000/yr)</option>
+                        </select>
+                    </div>
+                </section>
+
+                <section class="control-group">
+                    <h2>Prior MAGI History (2-Year Lookback Context)</h2>
+                    <div class="input-wrapper">
+                        <label for="magi-2yr">MAGI 2 Years Prior ($)</label>
+                        <input type="number" id="magi-2yr" value="140000">
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="magi-1yr">MAGI 1 Year Prior ($)</label>
+                        <input type="number" id="magi-1yr" value="115000">
+                    </div>
+                </section>
+
+                <button id="optimize-btn" class="btn btn-primary full-width">Execute Conversion Optimization</button>
             </div>
         </aside>
 
-        <button id="toggle-sidebar-btn" class="sidebar-toggle" title="Toggle Input Panel">◂ Hide Inputs</button>
-
-        <main class="content-area">
-            <header class="top-bar">
-                <div class="metrics-summary-strip">
-                    <div class="summary-item">
-                        <span class="item-label">Ending Net Worth (Age 95)</span>
-                        <div class="item-value-group">
-                            <span id="metric-networth-optimized" class="item-value color-opt">$0</span>
-                            <span class="item-vs">vs <span id="metric-networth-baseline">$0</span> (Baseline)</span>
-                        </div>
+        <main class="main-content">
+            <header class="top-nav">
+                <button id="toggle-sidebar-btn" class="toggle-btn">◂ Hide Inputs</button>
+                <div class="horizontal-metrics-strip">
+                    <div class="header-metric-box">
+                        <span class="label">Baseline Final Net Worth</span>
+                        <span id="metric-networth-baseline" class="value text-muted">$0</span>
                     </div>
-                    <div class="summary-divider"></div>
-                    <div class="summary-item">
-                        <span class="item-label">Tax-Adjusted Net Worth</span>
-                        <div class="item-value-group">
-                            <span id="metric-adj-optimized" class="item-value color-adj">$0</span>
-                            <span class="item-vs">vs <span id="metric-adj-baseline">$0</span> (Baseline)</span>
-                        </div>
+                    <div class="header-metric-box">
+                        <span class="label">Optimized Final Net Worth</span>
+                        <span id="metric-networth-optimized" class="value text-blue">$0</span>
                     </div>
-                    <div class="summary-divider"></div>
-                    <div class="summary-item">
-                        <span class="item-label">Net Conversion Strategy Benefit</span>
-                        <div id="metric-benefit" class="item-value color-benefit">$0</div>
+                    <div class="header-metric-box">
+                        <span class="label">Baseline Present Value Net Worth</span>
+                        <span id="metric-adj-baseline" class="value text-muted">$0</span>
+                    </div>
+                    <div class="header-metric-box">
+                        <span class="label">Optimized Present Value Net Worth</span>
+                        <span id="metric-adj-optimized" class="value text-purple">$0</span>
+                    </div>
+                    <div class="header-metric-box highlight">
+                        <span class="label">Total Conversion Strategy Benefit</span>
+                        <span id="metric-benefit" class="value text-cyan">$0</span>
                     </div>
                 </div>
             </header>
 
-            <div class="workspace-container">
-                <div class="tabs-navigation">
-                    <button class="tab-btn active" data-target="tab-conversions">Conversion vs Tax</button>
-                    <button class="tab-btn" data-target="tab-cashflow">Cash Flow</button>
-                    <button class="tab-btn" data-target="tab-accounts">Account Balances</button>
-                    <button class="tab-btn" data-target="tab-taxes">Tax View</button>
-                    <button class="tab-btn" data-target="tab-details">Cash Detail Table</button>
+            <div class="workspace-scroll">
+                <div class="workspace-tabs-strip">
+                    <button class="tab-btn active" data-target="tab-charts">Visualization Suites</button>
+                    <button class="tab-btn" data-target="tab-ledger">Detailed Pro-Forma Ledger Data</button>
                 </div>
 
-                <div id="tab-conversions" class="tab-content active">
-                    <div class="card chart-container full-width">
-                        <div class="card-header">
-                            <h3>Roth Conversions vs Total Taxes Paid By Year</h3>
-                        </div>
-                        <div class="canvas-wrapper large-canvas">
-                            <canvas id="conversionsTaxChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="tab-cashflow" class="tab-content">
-                    <div class="card chart-container full-width">
-                        <div class="card-header">
-                            <h3>Annual Portfolio Cash Flows</h3>
-                            <div class="chart-controls">
-                                <label><input type="radio" name="cashflow-view" value="net" checked> Net Flow</label>
-                                <label><input type="radio" name="cashflow-view" value="inflow"> Inflows Only</label>
-                                <label><input type="radio" name="cashflow-view" value="outflow"> Outflows Only</label>
+                <div id="tab-charts" class="tab-content active">
+                    <div class="charts-dashboard-grid">
+                        <div class="card chart-container">
+                            <div class="card-header">
+                                <h3>Conversion & Tax Execution Schedule</h3>
+                            </div>
+                            <div class="canvas-wrapper">
+                                <canvas id="conversionsTaxChart"></canvas>
                             </div>
                         </div>
-                        <div class="canvas-wrapper large-canvas">
-                            <canvas id="cashFlowChart"></canvas>
-                        </div>
-                    </div>
-                </div>
 
-                <div id="tab-accounts" class="tab-content">
-                    <div class="card chart-container full-width">
-                        <div class="card-header">
-                            <h3>Asset Account Balances Evolution</h3>
-                        </div>
-                        <div class="canvas-wrapper large-canvas">
-                            <canvas id="accountBalancesChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="tab-taxes" class="tab-content">
-                    <div class="card chart-container full-width">
-                        <div class="card-header">
-                            <h3>Tax Type & Surcharge Composition Breakdown</h3>
-                            <div class="chart-controls">
-                                <label><input type="radio" name="tax-view" value="total" checked> Tax Breakdown</label>
-                                <label><input type="radio" name="tax-view" value="ss"> Social Security Taxed</label>
-                                <label><input type="radio" name="tax-view" value="medicare"> Medicare IRMAA</label>
+                        <div class="card chart-container">
+                            <div class="card-header">
+                                <h3>Cash Flow Structural Mechanics</h3>
+                                <div class="chart-controls">
+                                    <label><input type="radio" name="cashflow-view" value="net" checked> Net Cash Flows</label>
+                                    <label><input type="radio" name="cashflow-view" value="components"> Components Breakdown</label>
+                                </div>
+                            </div>
+                            <div class="canvas-wrapper">
+                                <canvas id="cashFlowChart"></canvas>
                             </div>
                         </div>
-                        <div class="canvas-wrapper large-canvas">
-                            <canvas id="taxBreakdownChart"></canvas>
+
+                        <div class="card chart-container">
+                            <div class="card-header">
+                                <h3>Account Balances Trajectories</h3>
+                            </div>
+                            <div class="canvas-wrapper">
+                                <canvas id="accountBalancesChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="card chart-container">
+                            <div class="card-header">
+                                <h3>Lifetime Tax Obligations Profile</h3>
+                                <div class="chart-controls">
+                                    <label><input type="radio" name="tax-view" value="total" checked> Total Category Tax</label>
+                                    <label><input type="radio" name="tax-view" value="ss"> SS Taxable Thresholds</label>
+                                    <label><input type="radio" name="tax-view" value="medicare"> Medicare Surcharges</label>
+                                </div>
+                            </div>
+                            <div class="canvas-wrapper">
+                                <canvas id="taxBreakdownChart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div id="tab-details" class="tab-content">
-                    <div class="card data-card">
-                        <div class="card-header">
-                            <h3>Annual Projections Detail Log</h3>
-                            <div class="toggle-buttons">
-                                <button id="btn-view-baseline" class="btn-toggle active">Baseline Scenario</button>
-                                <button id="btn-view-optimized" class="btn-toggle">Optimized Scenario</button>
+                <div id="tab-ledger" class="tab-content">
+                    <div class="card ledger-card">
+                        <div class="card-header ledger-header-controls">
+                            <h3>Annualized Multi-Tier Pro-Forma Ledger Data</h3>
+                            <div class="ledger-toggle-group">
+                                <button id="btn-view-baseline" class="toggle-sub-btn active">Baseline (No Conversions)</button>
+                                <button id="btn-view-optimized" class="toggle-sub-btn">Optimized Strategy View</button>
                             </div>
                         </div>
-                        <div class="table-scroll">
-                            <table class="detail-table">
+                        <div class="table-responsive-wrapper">
+                            <table class="data-table">
                                 <thead>
                                     <tr>
                                         <th>Year</th>
                                         <th>Age</th>
-                                        <th>IRA (Pre-Tax)</th>
+                                        <th>Trad. IRA</th>
                                         <th>Roth IRA</th>
                                         <th>Brokerage</th>
                                         <th>Nominal NW</th>
-                                        <th class="col-adj">Adj. Net Worth ▾</th>
+                                        <th class="col-adj">PV Net Worth</th>
                                         <th>Conversion</th>
                                         <th>RMD</th>
                                         <th>Total Tax</th>
