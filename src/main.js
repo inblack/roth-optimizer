@@ -8,19 +8,19 @@ import {
     updateTaxBreakdownChart 
 } from './chartManager.js';
 
-// Cache results for multi-scenario views
+// Cache results for parallel scenario visualization switching
 let cachedBaseline = [];
 let cachedOptimized = [];
 let activeTableView = 'baseline';
 
-// Core UI Element selector helper
+// Core UI Element selector shortcut helper
 const getEl = id => document.getElementById(id);
 
 // Active runtime map of optimized conversions
 let activeConversions = {};
 
 /**
- * Standard monetary formatting helper 
+ * Standard monetary formatting engine
  */
 const formatCurrency = (val) => {
     return new Intl.NumberFormat('en-US', {
@@ -54,12 +54,17 @@ function setupDualInput(sliderId, inputId, onChange) {
 }
 
 /**
- * Gathers the live parameters state from the UI sidebar controls panel
+ * Gathers input states from the sidebar panel and maps dynamic tracking age states
  */
 function gatherInputParams() {
+    const startYear = parseInt(getEl('start-year').value, 10) || 2027;
+    const birthYear = parseInt(getEl('birth-year').value, 10) || 1961;
+
     return {
-        startYear: parseInt(getEl('start-year').value, 10) || 2027,
-        birthYear: parseInt(getEl('birth-year').value, 10) || 1961,
+        startYear: startYear,
+        birthYear: birthYear,
+        // DYNAMIC FRAMEWORK FIX: Calculates exact baseline age at analysis start year
+        currentAge: startYear - birthYear, 
         retirementAge: parseInt(getEl('retirement-age').value, 10) || 61,
         filingStatus: getEl('filing-status').value,
         state: getEl('state-residence').value,
@@ -75,7 +80,7 @@ function gatherInputParams() {
         pensionProfile: getEl('pension-profile').value,
         capGainsProfile: getEl('capgains-profile').value,
         livingExpensesProfile: getEl('living-expenses-profile').value,
-        // Collects your explicit Form 1040 historical data points
+        // Form 1040 Explicit Lookbacks (Lines 11 + 2a)
         magiHistory: [
             parseFloat(getEl('magi-2yr').value) || 0,
             parseFloat(getEl('magi-1yr').value) || 0
@@ -84,12 +89,12 @@ function gatherInputParams() {
 }
 
 /**
- * Refreshes all metrics counters, recalculates simulations, and syncs responsive charts
+ * Recalculates baseline vs optimized paths and renders updated chart canvases/metrics
  */
 function updateDashboard() {
     const params = gatherInputParams();
     
-    // Evaluate parallel tracks
+    // Evaluate parallel projection tracks
     const baselineYears = runProjection({ ...params, conversions: {} });
     const optimizedYears = runProjection({ ...params, conversions: activeConversions });
 
@@ -98,7 +103,7 @@ function updateDashboard() {
     const baseFinal = baselineYears[baselineYears.length - 1];
     const optFinal = optimizedYears[optimizedYears.length - 1];
 
-    // Bind metrics data into the compact single-line horizontal strip headers
+    // Sync metrics text into the compact horizontal metrics summary strip
     getEl('metric-networth-baseline').innerText = formatCurrency(baseFinal.nominalNetWorth);
     getEl('metric-networth-optimized').innerText = formatCurrency(optFinal.nominalNetWorth);
     getEl('metric-adj-baseline').innerText = formatCurrency(baseFinal.adjustedNetWorth);
@@ -107,14 +112,14 @@ function updateDashboard() {
     const benefit = optFinal.adjustedNetWorth - baseFinal.adjustedNetWorth;
     getEl('metric-benefit').innerText = (benefit >= 0 ? '+' : '') + formatCurrency(benefit);
 
-    // Refresh charting views
+    // Refresh all active workspace tracking charts
     updateNetWorthChart('netWorthChart', baselineYears, optimizedYears);
     updateConversionsTaxChart('conversionsTaxChart', optimizedYears);
     updateCashFlowChart('cashFlowChart', optimizedYears, document.querySelector('input[name="cashflow-view"]:checked')?.value || 'net');
     updateAccountBalancesChart('accountBalancesChart', optimizedYears);
     updateTaxBreakdownChart('taxBreakdownChart', optimizedYears, document.querySelector('input[name="tax-view"]:checked')?.value || 'total');
 
-    // Retain execution cache for dynamic toggle swaps
+    // Preserve output data array inside context cache
     cachedBaseline = baselineYears;
     cachedOptimized = optimizedYears;
     
@@ -123,7 +128,7 @@ function updateDashboard() {
 }
 
 /**
- * Renders the data grid logging projection outputs out row-by-row
+ * Builds data rows dynamically inside the data ledger grid tab panel
  */
 function renderTable(years) {
     const tbody = getEl('detail-table-body');
@@ -139,7 +144,7 @@ function renderTable(years) {
             <td>${formatCurrency(y.balances.roth)}</td>
             <td>${formatCurrency(y.balances.brokerage)}</td>
             <td>${formatCurrency(y.nominalNetWorth)}</td>
-            <td>${formatCurrency(y.adjustedNetWorth)}</td>
+            <td class="col-adj">${formatCurrency(y.adjustedNetWorth)}</td>
             <td>${formatCurrency(y.conversionAmount)}</td>
             <td>${formatCurrency(y.rmd)}</td>
             <td>${formatCurrency(y.taxes.totalTax)}</td>
@@ -155,7 +160,7 @@ function renderTable(years) {
 }
 
 /**
- * Analyzes total portfolio performance over its lifespan to compile clear strategy summary pills
+ * Assesses total structural impact of a plan strategy over time to build high level pills
  */
 function generateAlerts(optimizedYears) {
     const alertsPanel = getEl('alerts-panel');
@@ -165,7 +170,7 @@ function generateAlerts(optimizedYears) {
     strategyGrid.innerHTML = '';
     const items = [];
 
-    // 1. Accumulate Lifetime IRMAA Premium Surcharges
+    // 1. Accumulate Lifetime Medicare IRMAA Surcharge Impact Costs
     const totalLifetimeIrmaa = optimizedYears.reduce((sum, y) => sum + (y.taxes.irmaaCost || 0), 0);
     const irmaaYearsCount = optimizedYears.filter(y => y.taxes.irmaaCost > 0).length;
 
@@ -181,7 +186,7 @@ function generateAlerts(optimizedYears) {
         });
     }
 
-    // 2. Identify Portfolio Brokerage Cash Runway Status
+    // 2. Locate Taxable Brokerage Liquidity Solvency Runway Bounds
     const depletionYear = optimizedYears.find(y => y.balances.brokerage <= 100);
     if (depletionYear) {
         items.push({
@@ -195,7 +200,7 @@ function generateAlerts(optimizedYears) {
         });
     }
 
-    // 3. Measure Conversion Implementation Target Lifespan
+    // 3. Track Active Optimization Conversions Execution Lifespan Window
     const activeConvYears = optimizedYears.filter(y => y.conversionAmount > 0);
     if (activeConvYears.length > 0) {
         items.push({
@@ -204,7 +209,7 @@ function generateAlerts(optimizedYears) {
         });
     }
 
-    // Append compiled structural statistics into the dashboard card view
+    // Process output presentation pills rendering logic sequence
     if (items.length > 0) {
         alertsPanel.classList.remove('hidden');
         items.forEach(item => {
@@ -222,10 +227,10 @@ function generateAlerts(optimizedYears) {
 }
 
 /**
- * Initialize interface event wires and setup user layouts upon document loading complete
+ * Wire structural click events, bindings, and tabs toggles upon DOM load completed
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // Collapsible Left Control Panel Drawer Architecture
+    // Left Control Panel Sidebar Toggle Drawer Mechanism
     const toggleSidebarBtn = getEl('toggle-sidebar-btn');
     const sidebarNode = document.querySelector('.sidebar');
     const appContainerNode = document.querySelector('.app-container');
@@ -243,12 +248,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleSidebarBtn.classList.remove('collapsed-state');
             }
             
-            // Dispatch window resize alert to let ChartJS canvases reshape nicely
+            // Allow layout canvas transition styles to finish before resizing canvases
             setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 310);
         });
     }
 
-    // Interactive Layout Navigation Tabs Intercept Switcher Links
+    // Tab view selection controller mapping
     const tabButtons = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
 
@@ -266,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Wire up Detail Data log toggle buttons
+    // Wire up Detail Data grid toggle buttons
     getEl('btn-view-baseline').addEventListener('click', () => {
         activeTableView = 'baseline';
         getEl('btn-view-baseline').classList.add('active');
@@ -281,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTable(cachedOptimized);
     });
 
-    // Radio charting filtering nodes
+    // Radio charting layout filters events binding actions
     document.querySelectorAll('input[name="cashflow-view"]').forEach(el => {
         el.addEventListener('change', () => updateCashFlowChart('cashFlowChart', cachedOptimized, el.value));
     });
@@ -290,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
         el.addEventListener('change', () => updateTaxBreakdownChart('taxBreakdownChart', cachedOptimized, el.value));
     });
 
-    // Dual input slider bindings initialization
+    // Initialize all synchronized dual slider pairs
     setupDualInput('ira-balance-slider', 'ira-balance', updateDashboard);
     setupDualInput('roth-balance-slider', 'roth-balance', updateDashboard);
     setupDualInput('brokerage-balance-slider', 'brokerage-balance', updateDashboard);
@@ -300,7 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDualInput('inflation-rate-slider', 'inflation-rate', updateDashboard);
     setupDualInput('ira-discount-rate-slider', 'ira-discount-rate', updateDashboard);
 
-    // Watch list for direct textual parameter updates (excluding age inputs)
+    // Watch list for any textual configurations inputs shifts
     const standardInputs = [
         'birth-year', 'start-year', 'retirement-age', 'filing-status', 'state-residence',
         'social-security-profile', 'pension-profile', 'capgains-profile',
@@ -311,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el) el.addEventListener('input', updateDashboard);
     });
 
-    // Form submission processing for optimization sequences execution
+    // Primary form optimization algorithm sequence trigger button
     getEl('optimize-btn').addEventListener('click', () => {
         const params = gatherInputParams();
         const res = optimizeRothConversions(params);
@@ -319,6 +324,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateDashboard();
     });
 
-    // Run baseline initialization view display
+    // Execute introductory initial run projection draw state sequence
     updateDashboard();
 });
