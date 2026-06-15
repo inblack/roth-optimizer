@@ -5,8 +5,7 @@ import {
     updateConversionsTaxChart, 
     updateCashFlowChart, 
     updateAccountBalancesChart, 
-    updateTaxBreakdownChart 
-} from './chartManager.js';
+    updateTaxBreakdownChart \n} from './chartManager.js';
 
 // Cache results for parallel scenario visualization switching
 let cachedBaseline = [];
@@ -70,7 +69,10 @@ function gatherInputParams() {
         iraBalance: parseFloat(getEl('ira-balance').value) || 0,
         rothBalance: parseFloat(getEl('roth-balance').value) || 0,
         brokerageBalance: parseFloat(getEl('brokerage-balance').value) || 0,
-        brokerageBasis: parseFloat(getEl('brokerage-basis').value) || 0,
+        
+        // CONSOLIDATED SINGLE SHIELD VALUE TRACKING
+        taxFreeShield: parseFloat(getEl('tax-free-shield').value) || 0,
+
         annualReturn: parseFloat(getEl('annual-return').value) || 0,
         dividendYield: parseFloat(getEl('dividend-yield').value) || 0,
         inflationRate: parseFloat(getEl('inflation-rate').value) || 0,
@@ -283,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDualInput('ira-balance-slider', 'ira-balance', updateDashboard);
     setupDualInput('roth-balance-slider', 'roth-balance', updateDashboard);
     setupDualInput('brokerage-balance-slider', 'brokerage-balance', updateDashboard);
-    setupDualInput('brokerage-basis-slider', 'brokerage-basis', updateDashboard);
+    setupDualInput('tax-free-shield-slider', 'tax-free-shield', updateDashboard);
     setupDualInput('annual-return-slider', 'annual-return', updateDashboard);
     setupDualInput('dividend-yield-slider', 'dividend-yield', updateDashboard);
     setupDualInput('inflation-rate-slider', 'inflation-rate', updateDashboard);
@@ -292,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const standardInputs = [
         'birth-year', 'start-year', 'retirement-age', 'filing-status', 'state-residence',
         'social-security-profile', 'pension-profile', 'capgains-profile',
-        'living-expenses-profile', 'magi-2yr', 'magi-1yr'
+        'living-expenses-profile', 'magi-2yr', 'magi-1yr', 'tax-free-shield'
     ];
     standardInputs.forEach(id => {
         const el = getEl(id);
