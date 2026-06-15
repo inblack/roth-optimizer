@@ -1,24 +1,15 @@
-import { runProjection } from './projectionRunner.js';
+import { runProjection, parseProfile } from './projectionRunner.js';
 import { BASE_DATA_2026, getInflatedValue } from './taxEngine.js';
 
-/**
- * Finds the optimal Roth conversion schedule to maximize ending Adjusted Net Worth.
- * Uses a hybrid approach:
- * 1. Coarse search over standard bracket-filling tiers.
- * 2. Fine-tuning local search using coordinate descent.
- */
 export function optimizeRothConversions(params) {
     const startYear = params.startYear;
     const currentAge = params.currentAge;
     const maxAge = 95;
     const numYears = maxAge - currentAge + 1;
-    const endYear = startYear + numYears - 1;
 
-    // We only optimize conversions from startAge up to RMD age (typically age 75) or max age 85
     const rmdAge = params.birthYear >= 1960 ? 75 : 73;
     const maxOptimizeAge = Math.min(85, rmdAge + 5);
 
-    // Initial baseline projection (No Conversions)
     const baselineConversions = {};
     const baselineResult = runProjection({ ...params, conversions: baselineConversions });
     const baselineScore = baselineResult[baselineResult.length - 1].adjustedNetWorth;
@@ -26,83 +17,91 @@ export function optimizeRothConversions(params) {
     let bestScore = baselineScore;
     let bestConversions = { ...baselineConversions };
 
-    // --- STEP 1: Bracket Filling Search ---
-    // Test standard bracket filling targets: 12% (15% post-TCJA approx), 22%, 24%, 32%
-    // We compute the target taxable income limit each year and fill conversions up to it.
-    const standardRates = [0.10, 0.12, 0.22, 0.24, 0.32];
+    const targets = [
+        { type: 'rate', value: 0.10 },
+        { type: 'rate', value: 0.12 },
+        { type: 'rate', value: 0.22 },
+        { type: 'rate', value: 0.24 },
+        { type: 'rate', value: 0.32 },
+        { type: 'rate', value: 0.35 },
+        { type: 'irmaa', index: 0 },
+        { type: 'irmaa', index: 1 },
+        { type: 'irmaa', index: 2 },
+        { type: 'irmaa', index: 3 },
+        { type: 'irmaa', index: 4 }
+    ];
     
-    for (const targetRate of standardRates) {
+    const rateDecimal = params.inflationRate / 100;
+
+    for (const target of targets) {
         const candidateConversions = {};
-        
-        // Run a simulation year-by-year, dynamically filling up to the bracket for that year
         let tempIra = params.iraBalance;
-        let tempBrokerage = params.brokerageBalance;
-        let tempBasis = params.brokerageBasis;
         
         for (let age = currentAge; age < maxOptimizeAge; age++) {
             const year = startYear + (age - currentAge);
             const inflationYears = Math.max(0, year - 2026);
             
-            // Get target bracket limit
-            const fedBrackets = BASE_DATA_2026.federal[params.filingStatus];
-            const matchingBracket = fedBrackets.find(b => Math.abs(b.rate - targetRate) < 0.005) || fedBrackets[1];
-            const maxIncome = getInflatedValue(matchingBracket.max, params.inflationRate / 100, inflationYears);
-            const standardDeduction = getInflatedValue(BASE_DATA_2026.federal.standardDeduction[params.filingStatus], params.inflationRate / 100, inflationYears);
+            const standardDeduction = getInflatedValue(BASE_DATA_2026.federal.standardDeduction[params.filingStatus], rateDecimal, inflationYears);
+            let targetAGI = 0;
 
-            // Estimate other ordinary income (Pension + RMD approx)
-            const rmd = calculateRmdApproximation(age, tempIra, params.birthYear);
-            const pension = 24000; // default pension fallback
-            const estimatedOtherIncome = pension + rmd - standardDeduction;
+            if (target.type === 'rate') {
+                const fedBrackets = BASE_DATA_2026.federal[params.filingStatus];
+                const matchingBracket = fedBrackets.find(b => Math.abs(b.rate - target.value) < 0.005) || fedBrackets[1];
+                const maxIncome = getInflatedValue(matchingBracket.max, rateDecimal, inflationYears);
+                targetAGI = maxIncome + standardDeduction;
+            } else if (target.type === 'irmaa') {
+                const irmaaBrackets = BASE_DATA_2026.irmaa[params.filingStatus];
+                const limit = irmaaBrackets[target.index].limit;
+                targetAGI = getInflatedValue(limit, rateDecimal, inflationYears);
+            }
 
-            // Room for conversion
-            const room = Math.max(0, maxIncome - estimatedOtherIncome);
-            const conversion = Math.min(tempIra, room, tempBrokerage * 0.9); // keep some brokerage for tax payments
-            
-            candidateConversions[year] = conversion;
-            
-            // Rough balance update to keep estimates reasonable
-            tempIra = Math.max(0, tempIra - conversion) * (1 + params.annualReturn / 100);
-            tempBrokerage = Math.max(0, tempBrokerage - (conversion * 0.22)) * (1 + params.annualReturn / 100); // assume 22% tax cost
+            const pension = parseProfile(params.pensionProfile, year, 0);
+            const rmd = tempIra / (95 - age + 5); 
+            const estimatedCurrentAGI = pension + rmd;
+
+            let conversionAmt = Math.max(0, targetAGI - estimatedCurrentAGI);
+            conversionAmt = Math.min(tempIra, conversionAmt);
+
+            if (conversionAmt > 5000) {
+                candidateConversions[year] = Math.round(conversionAmt / 1000) * 1000;
+                tempIra = Math.max(0, tempIra - conversionAmt);
+            }
+            tempIra *= (1 + params.annualReturn / 100);
         }
 
-        // Test this candidate schedule
-        const res = runProjection({ ...params, conversions: candidateConversions });
-        const score = res[res.length - 1].adjustedNetWorth;
-        
-        if (score > bestScore) {
-            bestScore = score;
-            bestConversions = { ...candidateConversions };
+        const candRes = runProjection({ ...params, conversions: candidateConversions });
+        const candScore = candRes[candRes.length - 1].adjustedNetWorth;
+
+        if (candScore > bestScore) {
+            bestScore = candScore;
+            bestConversions = candidateConversions;
         }
     }
 
-    // --- STEP 2: Coordinate Descent Fine-Tuning ---
-    // Perform local searches by perturbing conversion amounts in each eligible year
+    // Coordinate Descent Fine Tuning
     let improved = true;
     let iterations = 0;
-    const maxIterations = 3; // Keep optimizer fast (<30ms)
-    const stepSizes = [50000, 20000, 10000]; // Multi-grid step sizes
+    const step = 10000;
 
-    while (improved && iterations < maxIterations) {
+    while (improved && iterations < 3) {
         improved = false;
-        const step = stepSizes[iterations];
-
         for (let age = currentAge; age < maxOptimizeAge; age++) {
             const year = startYear + (age - currentAge);
             const currentVal = bestConversions[year] || 0;
 
-            // Test adding step
-            const testAddConversions = { ...bestConversions, [year]: Math.max(0, currentVal + step) };
+            // Add testing
+            const testAddConversions = { ...bestConversions, [year]: currentVal + step };
             const addRes = runProjection({ ...params, conversions: testAddConversions });
             const addScore = addRes[addRes.length - 1].adjustedNetWorth;
 
-            if (addScore > bestScore + 100) { // must improve by more than $100
+            if (addScore > bestScore + 100) {
                 bestScore = addScore;
                 bestConversions = testAddConversions;
                 improved = true;
                 continue;
             }
 
-            // Test subtracting step
+            // Subtract testing
             if (currentVal > 0) {
                 const testSubConversions = { ...bestConversions, [year]: Math.max(0, currentVal - step) };
                 const subRes = runProjection({ ...params, conversions: testSubConversions });
@@ -118,7 +117,6 @@ export function optimizeRothConversions(params) {
         iterations++;
     }
 
-    // Ensure all values are rounded to nearest $1,000 for clean UI display
     for (const year in bestConversions) {
         bestConversions[year] = Math.round(bestConversions[year] / 1000) * 1000;
     }
@@ -127,14 +125,4 @@ export function optimizeRothConversions(params) {
         conversions: bestConversions,
         score: bestScore
     };
-}
-
-/**
- * Simple RMD factor estimation for the optimizer search
- */
-function calculateRmdApproximation(age, balance, birthYear) {
-    const rmdAge = birthYear >= 1960 ? 75 : 73;
-    if (age < rmdAge) return 0;
-    const factor = (95 - age) || 1; // rough linear life expectancy divisor
-    return balance / factor;
 }

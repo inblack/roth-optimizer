@@ -1,14 +1,12 @@
 import { BASE_DATA_2026, getInflatedValue } from './taxEngine.js';
-
-/**
- * Roth Conversion Optimizer - Chart Manager
- * Handles Chart.js initialization, custom dark-mode rendering, gradients, and real-time updates.
- */
+import { parseProfile } from './projectionRunner.js';
 
 let netWorthChart = null;
-let taxBracketsChart = null;
+let conversionsTaxChart = null;
+let cashFlowChart = null;
+let accountBalancesChart = null;
+let taxBreakdownChart = null;
 
-// Helper to format currency
 const formatCurrency = (val) => {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -17,32 +15,46 @@ const formatCurrency = (val) => {
     }).format(val);
 };
 
-/**
- * Initializes/updates the Net Worth projection line chart.
- */
+const commonScales = {
+    x: {
+        grid: { color: 'rgba(255, 255, 255, 0.03)' },
+        ticks: { color: '#9ca3af', font: { family: 'Inter', size: 10 } }
+    },
+    y: {
+        grid: { color: 'rgba(255, 255, 255, 0.03)' },
+        ticks: {
+            color: '#9ca3af',
+            font: { family: 'Inter', size: 10 },
+            callback: (value) => {
+                if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
+                if (value >= 1e3) return `$${(value / 1e3).toFixed(0)}k`;
+                if (value <= -1e6) return `-$${(Math.abs(value) / 1e6).toFixed(1)}M`;
+                if (value <= -1e3) return `-$${(Math.abs(value) / 1e3).toFixed(0)}k`;
+                return `$${value}`;
+            }
+        }
+    }
+};
+
 export function updateNetWorthChart(canvasId, baselineYears, optimizedYears) {
-    const ctx = document.getElementById(canvasId).getContext('2d');
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
     
+    if (netWorthChart) {
+        netWorthChart.destroy();
+    }
+
     const labels = baselineYears.map(y => `Age ${y.age} (${y.year})`);
     const baselineData = baselineYears.map(y => y.nominalNetWorth);
     const optimizedData = optimizedYears.map(y => y.nominalNetWorth);
 
-    // If chart exists, update data and redraw
-    if (netWorthChart) {
-        netWorthChart.data.labels = labels;
-        netWorthChart.data.datasets[0].data = baselineData;
-        netWorthChart.data.datasets[1].data = optimizedData;
-        netWorthChart.update();
-        return;
-    }
-
-    // Create custom neon gradients for the lines
     const gradBaseline = ctx.createLinearGradient(0, 0, 0, 400);
-    gradBaseline.addColorStop(0, 'rgba(251, 146, 60, 0.2)');
+    gradBaseline.addColorStop(0, 'rgba(251, 146, 60, 0.15)');
     gradBaseline.addColorStop(1, 'rgba(251, 146, 60, 0.0)');
 
     const gradOptimized = ctx.createLinearGradient(0, 0, 0, 400);
-    gradOptimized.addColorStop(0, 'rgba(59, 130, 246, 0.25)');
+    gradOptimized.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
     gradOptimized.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
 
     netWorthChart = new Chart(ctx, {
@@ -58,9 +70,7 @@ export function updateNetWorthChart(canvasId, baselineYears, optimizedYears) {
                     backgroundColor: gradBaseline,
                     fill: true,
                     tension: 0.3,
-                    pointRadius: 0,
-                    pointHoverRadius: 6,
-                    pointHoverBackgroundColor: 'rgba(251, 146, 60, 1)'
+                    pointRadius: 0
                 },
                 {
                     label: 'With Optimized Conversion',
@@ -70,9 +80,7 @@ export function updateNetWorthChart(canvasId, baselineYears, optimizedYears) {
                     backgroundColor: gradOptimized,
                     fill: true,
                     tension: 0.3,
-                    pointRadius: 0,
-                    pointHoverRadius: 6,
-                    pointHoverBackgroundColor: '#06b6d4'
+                    pointRadius: 0
                 }
             ]
         },
@@ -94,147 +102,54 @@ export function updateNetWorthChart(canvasId, baselineYears, optimizedYears) {
                             const idx = context.dataIndex;
                             const yearObj = context.datasetIndex === 0 ? baselineYears[idx] : optimizedYears[idx];
                             const { ira, roth, brokerage } = yearObj.balances;
-                            
                             return [
                                 `${context.dataset.label}: ${formatCurrency(val)}`,
-                                `  • IRA: ${formatCurrency(ira)}`,
-                                `  • Roth: ${formatCurrency(roth)}`,
+                                `  • IRA (Pre-Tax): ${formatCurrency(ira)}`,
+                                `  • Roth IRA: ${formatCurrency(roth)}`,
                                 `  • Brokerage: ${formatCurrency(brokerage)}`
                             ];
                         }
                     }
                 }
             },
-            scales: {
-                x: {
-                    grid: { color: 'rgba(255, 255, 255, 0.03)' },
-                    ticks: { color: '#9ca3af', font: { family: 'Inter', size: 10 } }
-                },
-                y: {
-                    grid: { color: 'rgba(255, 255, 255, 0.03)' },
-                    ticks: {
-                        color: '#9ca3af',
-                        font: { family: 'Inter', size: 10 },
-                        callback: (value) => {
-                            if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
-                            if (value >= 1e3) return `$${(value / 1e3).toFixed(0)}k`;
-                            return `$${value}`;
-                        }
-                    }
-                }
-            }
+            scales: commonScales
         }
     });
 }
 
-/**
- * Initializes/updates the Tax Bracket & Conversion stacked bar chart.
- */
-export function updateTaxBracketsChart(canvasId, optimizedYears, inflationRate, filingStatus) {
-    const ctx = document.getElementById(canvasId).getContext('2d');
+export function updateConversionsTaxChart(canvasId, optimizedYears) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
 
-    const labels = optimizedYears.map(y => `Age ${y.age}`);
-    
-    const ordinaryTaxable = optimizedYears.map(y => Math.max(0, y.taxes.ordinaryTaxable - y.conversionAmount));
-    const conversions = optimizedYears.map(y => y.conversionAmount);
-
-    // Calculate dynamic inflated bracket boundaries for each year
-    const limit10 = [];
-    const limit12 = [];
-    const limit22 = [];
-    const limit24 = [];
-
-    optimizedYears.forEach(y => {
-        const inflationYears = Math.max(0, y.year - 2026);
-        const rate = inflationRate / 100;
-        const fedBrackets = BASE_DATA_2026.federal[filingStatus] || BASE_DATA_2026.federal.single;
-
-        limit10.push(getInflatedValue(fedBrackets[0].max, rate, inflationYears));
-        limit12.push(getInflatedValue(fedBrackets[1].max, rate, inflationYears));
-        limit22.push(getInflatedValue(fedBrackets[2].max, rate, inflationYears));
-        limit24.push(getInflatedValue(fedBrackets[3].max, rate, inflationYears));
-    });
-
-    if (taxBracketsChart) {
-        taxBracketsChart.data.labels = labels;
-        taxBracketsChart.data.datasets[0].data = ordinaryTaxable;
-        taxBracketsChart.data.datasets[1].data = conversions;
-        taxBracketsChart.data.datasets[2].data = limit10;
-        taxBracketsChart.data.datasets[3].data = limit12;
-        taxBracketsChart.data.datasets[4].data = limit22;
-        taxBracketsChart.data.datasets[5].data = limit24;
-        taxBracketsChart.update();
-        return;
+    if (conversionsTaxChart) {
+        conversionsTaxChart.destroy();
     }
 
-    taxBracketsChart = new Chart(ctx, {
+    const labels = optimizedYears.map(y => `Age ${y.age}`);
+    const conversions = optimizedYears.map(y => y.conversionAmount);
+    const taxes = optimizedYears.map(y => y.taxes.totalTax);
+
+    conversionsTaxChart = new Chart(ctx, {
         type: 'bar',
         data: {
             labels,
             datasets: [
                 {
-                    label: 'Base Taxable Income',
-                    data: ordinaryTaxable,
-                    backgroundColor: 'rgba(59, 130, 246, 0.35)',
-                    borderColor: 'rgba(59, 130, 246, 0.6)',
-                    borderWidth: 1,
-                    stack: 'Stack 0',
-                    order: 2
-                },
-                {
-                    label: 'Roth Conversion Amount',
+                    label: 'Roth Conversion',
                     data: conversions,
                     backgroundColor: 'rgba(139, 92, 246, 0.85)',
                     borderColor: '#8b5cf6',
                     borderWidth: 1,
-                    stack: 'Stack 0',
-                    borderRadius: 4,
-                    order: 2
-                },
-                // Bracket limits lines
-                {
-                    label: '10% Bracket Limit',
-                    data: limit10,
-                    type: 'line',
-                    borderColor: '#22c55e',
-                    borderWidth: 1.5,
-                    borderDash: [4, 4],
-                    fill: false,
-                    pointRadius: 0,
-                    order: 1
+                    borderRadius: 4
                 },
                 {
-                    label: '12% Bracket Limit',
-                    data: limit12,
-                    type: 'line',
-                    borderColor: '#eab308',
-                    borderWidth: 1.5,
-                    borderDash: [4, 4],
-                    fill: false,
-                    pointRadius: 0,
-                    order: 1
-                },
-                {
-                    label: '22% Bracket Limit',
-                    data: limit22,
-                    type: 'line',
-                    borderColor: '#f97316',
-                    borderWidth: 1.5,
-                    borderDash: [4, 4],
-                    fill: false,
-                    pointRadius: 0,
-                    order: 1
-                },
-                {
-                    label: '24% Bracket Limit',
-                    data: limit24,
-                    type: 'line',
+                    label: 'Total Tax Paid',
+                    data: taxes,
+                    backgroundColor: 'rgba(239, 68, 68, 0.75)',
                     borderColor: '#ef4444',
-                    borderWidth: 1.5,
-                    borderDash: [4, 4],
-                    fill: false,
-                    pointRadius: 0,
-                    order: 1
+                    borderWidth: 1,
+                    borderRadius: 4
                 }
             ]
         },
@@ -245,37 +160,152 @@ export function updateTaxBracketsChart(canvasId, optimizedYears, inflationRate, 
                 legend: { display: false },
                 tooltip: {
                     backgroundColor: '#13151c',
-                    titleColor: '#ffffff',
-                    bodyColor: '#f3f4f6',
                     borderColor: 'rgba(255, 255, 255, 0.08)',
                     borderWidth: 1,
                     padding: 12,
                     callbacks: {
-                        label: (context) => {
-                            const val = context.raw;
-                            if (context.dataset.type === 'line') {
-                                return `${context.dataset.label}: ${formatCurrency(val)}`;
-                            }
-                            const idx = context.dataIndex;
-                            const yearObj = optimizedYears[idx];
-                            return `${context.dataset.label}: ${formatCurrency(val)} (AGI: ${formatCurrency(yearObj.taxes.agi)})`;
-                        }
+                        label: (context) => `${context.dataset.label}: ${formatCurrency(context.raw)}`
                     }
                 }
             },
+            scales: commonScales
+        }
+    });
+}
+
+export function updateCashFlowChart(canvasId, optimizedYears, viewType) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    if (cashFlowChart) {
+        cashFlowChart.destroy();
+    }
+
+    const labels = optimizedYears.map(y => `Age ${y.age} (${y.year})`);
+    let datasets = [];
+    let chartType = 'bar';
+
+    if (viewType === 'net') {
+        chartType = 'line';
+        const netFlowData = optimizedYears.map(y => y.cashInflows - (y.livingExpenses + y.taxes.totalTax));
+        datasets = [
+            {
+                label: 'Net Cash Flow',
+                data: netFlowData,
+                borderColor: '#06b6d4',
+                backgroundColor: 'rgba(6, 182, 212, 0.15)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.3
+            }
+        ];
+    } else if (viewType === 'inflow') {
+        datasets = [
+            { label: 'Pension', data: optimizedYears.map(y => y.pension), backgroundColor: '#22c55e' },
+            { label: 'Social Security', data: optimizedYears.map(y => y.socialSecurity), backgroundColor: '#3b82f6' },
+            { label: 'Dividends & Capital Gains', data: optimizedYears.map(y => y.dividends), backgroundColor: '#06b6d4' },
+            { label: 'RMDs', data: optimizedYears.map(y => y.rmd), backgroundColor: '#f97316' }
+        ];
+    } else if (viewType === 'outflow') {
+        datasets = [
+            { label: 'Living Expenses', data: optimizedYears.map(y => y.livingExpenses), backgroundColor: '#f43f5e' },
+            { label: 'Total Taxes Paid', data: optimizedYears.map(y => y.taxes.totalTax), backgroundColor: '#ef4444' }
+        ];
+    }
+
+    cashFlowChart = new Chart(ctx, {
+        type: chartType,
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, labels: { color: '#9ca3af' } },
+                tooltip: { backgroundColor: '#13151c', padding: 12 }
+            },
+            scales: commonScales
+        }
+    });
+}
+
+export function updateAccountBalancesChart(canvasId, optimizedYears) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    if (accountBalancesChart) {
+        accountBalancesChart.destroy();
+    }
+
+    const labels = optimizedYears.map(y => `Age ${y.age}`);
+
+    accountBalancesChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Traditional IRA', data: optimizedYears.map(y => y.balances.ira), backgroundColor: '#f97316' },
+                { label: 'Roth IRA', data: optimizedYears.map(y => y.balances.roth), backgroundColor: '#a855f7' },
+                { label: 'Brokerage', data: optimizedYears.map(y => y.balances.brokerage), backgroundColor: '#3b82f6' }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, labels: { color: '#9ca3af' } },
+                tooltip: { backgroundColor: '#13151c', padding: 12 }
+            },
             scales: {
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#9ca3af', font: { family: 'Inter', size: 10 } }
-                },
-                y: {
-                    grid: { color: 'rgba(255, 255, 255, 0.03)' },
-                    ticks: {
-                        color: '#9ca3af',
-                        font: { family: 'Inter', size: 10 },
-                        callback: (value) => `$${(value / 1e3).toFixed(0)}k`
-                    }
-                }
+                x: { stacked: true, grid: { display: false }, ticks: { color: '#9ca3af' } },
+                y: { stacked: true, grid: { color: 'rgba(255, 255, 255, 0.03)' }, ticks: { color: '#9ca3af' } }
+            }
+        }
+    });
+}
+
+export function updateTaxBreakdownChart(canvasId, optimizedYears, viewType) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    if (taxBreakdownChart) {
+        taxBreakdownChart.destroy();
+    }
+
+    const labels = optimizedYears.map(y => `Age ${y.age}`);
+    let datasets = [];
+
+    if (viewType === 'total') {
+        datasets = [
+            { label: 'Federal Income Tax', data: optimizedYears.map(y => y.taxes.fedTax), backgroundColor: '#3b82f6' },
+            { label: 'State Tax', data: optimizedYears.map(y => y.taxes.stateTax), backgroundColor: '#a855f7' },
+            { label: 'Medicare IRMAA Cost', data: optimizedYears.map(y => y.taxes.irmaaCost), backgroundColor: '#ef4444' }
+        ];
+    } else if (viewType === 'ss') {
+        datasets = [
+            { label: 'Taxable SS Benefits', data: optimizedYears.map(y => y.taxes.taxableSS), backgroundColor: '#22c55e' }
+        ];
+    } else if (viewType === 'medicare') {
+        datasets = [
+            { label: 'Medicare / IRMAA Surcharge', data: optimizedYears.map(y => y.taxes.irmaaCost), backgroundColor: '#ef4444' }
+        ];
+    }
+
+    taxBreakdownChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, labels: { color: '#9ca3af' } },
+                tooltip: { backgroundColor: '#13151c', padding: 12 }
+            },
+            scales: {
+                x: { stacked: true, grid: { display: false }, ticks: { color: '#9ca3af' } },
+                y: { stacked: true, grid: { color: 'rgba(255, 255, 255, 0.03)' }, ticks: { color: '#9ca3af' } }
             }
         }
     });

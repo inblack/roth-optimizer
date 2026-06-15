@@ -4,7 +4,6 @@
  * Social Security taxability, Capital Gains stacking, and Medicare IRMAA cliffs.
  */
 
-// 2026 base tax bracket rates and bounds (subject to inflation indexation)
 export const BASE_DATA_2026 = {
     federal: {
         single: [
@@ -40,8 +39,6 @@ export const BASE_DATA_2026 = {
         ]
     },
     irmaa: {
-        // Base MAGI thresholds for 2 years prior
-        // Note: Surcharges are calculated annually (monthly surcharge * 12)
         single: [
             { limit: 106000, surcharge: 0 },
             { limit: 133000, surcharge: 70 * 12 },
@@ -91,182 +88,134 @@ export const BASE_DATA_2026 = {
     }
 };
 
-// IRS RMD Uniform Lifetime Table
 const RMD_TABLE = {
     72: 27.4, 73: 26.5, 74: 25.5, 75: 24.6, 76: 23.7, 77: 22.9, 78: 22.0, 79: 21.1,
     80: 20.2, 81: 19.4, 82: 18.5, 83: 17.7, 84: 16.8, 85: 16.0, 86: 15.2, 87: 14.4,
-    88: 13.7, 89: 12.9, 90: 12.2, 91: 11.5, 92: 10.8, 93: 10.1, 94: 9.5, 95: 8.9,
-    96: 8.4, 97: 7.8, 98: 7.3, 99: 6.8, 100: 6.4
+    88: 13.7, 89: 12.9, 90: 12.2, 91: 11.5, 92: 10.8, 93: 10.1, 94: 9.5, 95: 8.9
 };
 
-/**
- * Calculates RMD based on age and previous year Dec 31 balance.
- */
+export function getInflatedValue(value, rate, years) {
+    return value * Math.pow(1 + rate, years);
+}
+
 export function calculateRMD(age, balance, birthYear) {
-    // SECURE Act 2.0 rules
     const rmdAge = birthYear >= 1960 ? 75 : 73;
     if (age < rmdAge) return 0;
-    const factor = RMD_TABLE[age] || RMD_TABLE[100];
+    const factor = RMD_TABLE[age] || RMD_TABLE[95];
     return balance / factor;
 }
 
-/**
- * Helper to inflate a bracket table or deduction amount
- */
-export function getInflatedValue(value, inflationRate, years) {
-    if (value === Infinity) return Infinity;
-    return value * Math.pow(1 + inflationRate, years);
-}
-
-/**
- * Computes progressive tax for a set of brackets
- */
-function calculateProgressiveTax(taxableIncome, brackets) {
-    if (taxableIncome <= 0) return 0;
+export function calculateProgressiveTax(taxableIncome, brackets) {
     let tax = 0;
-    for (const bracket of brackets) {
-        if (taxableIncome > bracket.min) {
-            const width = Math.min(taxableIncome, bracket.max) - bracket.min;
-            tax += width * bracket.rate;
-        } else {
-            break;
+    for (const b of brackets) {
+        if (taxableIncome > b.min) {
+            const applicableAmt = Math.min(taxableIncome, b.max) - b.min;
+            tax += applicableAmt * b.rate;
         }
     }
     return tax;
 }
 
-/**
- * Exact IRS Social Security Taxability Calculation Worksheet
- */
-export function calculateTaxableSocialSecurity(provisionalIncome, ssBenefit, filingStatus) {
-    const threshold1 = filingStatus === 'mfj' ? 32000 : 25000;
-    const threshold2 = filingStatus === 'mfj' ? 44000 : 34000;
-    const max50Benefit = 0.5 * ssBenefit;
-    const max85Benefit = 0.85 * ssBenefit;
-
-    if (provisionalIncome <= threshold1) {
-        return 0;
+export function calculateTaxableSocialSecurity(provisionalIncome, socialSecurity, filingStatus) {
+    const baseObj = filingStatus === 'mfj' ? { tier1: 32000, tier2: 44000 } : { tier1: 25000, tier2: 34000 };
+    if (provisionalIncome <= baseObj.tier1) return 0;
+    
+    if (provisionalIncome <= baseObj.tier2) {
+        return Math.min(0.5 * socialSecurity, 0.5 * (provisionalIncome - baseObj.tier1));
     }
-
-    if (provisionalIncome <= threshold2) {
-        return Math.min(max50Benefit, 0.5 * (provisionalIncome - threshold1));
-    }
-
-    // Over threshold2
-    const baseAmount = Math.min(filingStatus === 'mfj' ? 6000 : 4500, max50Benefit);
-    const addedAmount = 0.85 * (provisionalIncome - threshold2);
-    return Math.min(max85Benefit, baseAmount + addedAmount);
+    const excessTier1 = baseObj.tier2 - baseObj.tier1;
+    const basicTaxable = Math.min(0.5 * excessTier1, 0.5 * socialSecurity);
+    const heavyTaxable = 0.85 * (provisionalIncome - baseObj.tier2);
+    return Math.min(0.85 * socialSecurity, basicTaxable + heavyTaxable);
 }
 
-/**
- * High-precision year calculation for Federal, State, IRMAA, and CapGains.
- */
 export function calculateAnnualTaxes({
     year,
     filingStatus,
-    ordinaryIncome, // pension + RMD + other ordinary (excl. SS, CapGains, Conversions)
+    ordinaryIncome,
     socialSecurity,
     realizedCapGains,
     conversionAmount,
     state,
     inflationRate,
     startYear,
-    magi2YearsPrior // input from MAGI history
+    magi2YearsPrior
 }) {
     const inflationYears = Math.max(0, year - 2026);
-    
-    // Inflate Federal Standard Deduction and Brackets
     const fedStandard = getInflatedValue(BASE_DATA_2026.federal.standardDeduction[filingStatus], inflationRate, inflationYears);
+
+    // Iterative Solution for Social Security Drag Engine
+    let taxableSS = 0;
+    const agiWithoutSS = ordinaryIncome + realizedCapGains + conversionAmount;
+    for (let i = 0; i < 5; i++) {
+        const provisionalIncome = agiWithoutSS + taxableSS + (0.5 * socialSecurity);
+        taxableSS = calculateTaxableSocialSecurity(provisionalIncome, socialSecurity, filingStatus);
+    }
+
+    const agi = ordinaryIncome + taxableSS + conversionAmount + realizedCapGains;
+    const ordinaryTaxableAmount = Math.max(0, (ordinaryIncome + taxableSS + conversionAmount) - fedStandard);
+    const totalTaxable = Math.max(0, agi - fedStandard);
+    const gainsToTax = totalTaxable - ordinaryTaxableAmount;
+
+    // Federal Ordinary Progression
     const fedBrackets = BASE_DATA_2026.federal[filingStatus].map(b => ({
         rate: b.rate,
         min: getInflatedValue(b.min, inflationRate, inflationYears),
         max: getInflatedValue(b.max, inflationRate, inflationYears)
     }));
+    const fedTax = calculateProgressiveTax(ordinaryTaxableAmount, fedBrackets);
 
-    // Step 1: Iterative solution for Social Security taxability
-    // Because Taxable SS is part of AGI, which is part of Provisional Income, we iterate to find the steady state.
-    let taxableSS = 0;
-    let agiWithoutSS = ordinaryIncome + realizedCapGains + conversionAmount;
-    let maxIterations = 5;
-    for (let i = 0; i < maxIterations; i++) {
-        // Provisional Income = AGI without SS + 50% of SS
-        const provisionalIncome = agiWithoutSS + (0.5 * socialSecurity);
-        taxableSS = calculateTaxableSocialSecurity(provisionalIncome, socialSecurity, filingStatus);
-    }
-
-    // Step 2: Calculate AGI
-    const agi = ordinaryIncome + taxableSS + realizedCapGains + conversionAmount;
-    const ordinaryTaxable = Math.max(0, (ordinaryIncome + taxableSS + conversionAmount) - fedStandard);
-
-    // Step 3: Progressive Ordinary Federal Income Tax
-    const fedOrdinaryTax = calculateProgressiveTax(ordinaryTaxable, fedBrackets);
-
-    // Step 4: Capital Gains Stacked Tax (stacking realizedCapGains on top of ordinaryTaxable)
-    const gainsBrackets = BASE_DATA_2026.capGains[filingStatus].map(b => ({
-        rate: b.rate,
-        min: getInflatedValue(b.min, inflationRate, inflationYears),
-        max: getInflatedValue(b.max, inflationRate, inflationYears)
-    }));
-
+    // Capital Gains Stack Calculation
     let capGainsTax = 0;
-    if (realizedCapGains > 0) {
-        // Stacked calculations
-        const totalTaxable = ordinaryTaxable + realizedCapGains;
+    if (gainsToTax > 0) {
+        const gainsBrackets = BASE_DATA_2026.capGains[filingStatus].map(b => ({
+            rate: b.rate,
+            min: getInflatedValue(b.min, inflationRate, inflationYears),
+            max: getInflatedValue(b.max, inflationRate, inflationYears)
+        }));
         const taxOnTotal = calculateProgressiveTax(totalTaxable, gainsBrackets);
-        const taxOnOrdinary = calculateProgressiveTax(ordinaryTaxable, gainsBrackets);
+        const taxOnOrdinary = calculateProgressiveTax(ordinaryTaxableAmount, gainsBrackets);
         capGainsTax = Math.max(0, taxOnTotal - taxOnOrdinary);
     }
 
-    // Step 5: State Taxes
+    // State Computations
     let stateTax = 0;
-    if (state !== 'FED_ONLY') {
-        const stateConfig = BASE_DATA_2026.state[state];
-        if (stateConfig) {
-            // Progressive State Tax (CA / NY)
-            const stateStandard = getInflatedValue(stateConfig.standardDeduction, inflationRate, inflationYears);
-            const stateBrackets = stateConfig.single.map(b => ({
-                rate: b.rate,
-                min: getInflatedValue(b.min, inflationRate, inflationYears),
-                max: getInflatedValue(b.max, inflationRate, inflationYears)
-            }));
-            const stateTaxable = Math.max(0, agi - stateStandard);
-            stateTax = calculateProgressiveTax(stateTaxable, stateBrackets);
-        } else if (state === 'PA') {
-            // Flat 3.07% on AGI (Pennsylvania)
-            stateTax = agi * 0.0307;
-        } else if (state === 'NC') {
-            // Flat 4.5% on AGI (North Carolina)
-            stateTax = agi * 0.045;
-        }
+    if (BASE_DATA_2026.state[state]) {
+        const stateStandard = getInflatedValue(BASE_DATA_2026.state[state].standardDeduction, inflationRate, inflationYears);
+        const stateBrackets = BASE_DATA_2026.state[state][filingStatus === 'mfj' ? 'mfj' : 'single']?.map(b => ({
+            rate: b.rate,
+            min: getInflatedValue(b.min, inflationRate, inflationYears),
+            max: getInflatedValue(b.max, inflationRate, inflationYears)
+        })) || [];
+        stateTax = calculateProgressiveTax(Math.max(0, agi - stateStandard), stateBrackets);
+    } else if (state === 'PA') {
+        stateTax = agi * 0.0307;
+    } else if (state === 'NC') {
+        stateTax = agi * 0.045;
     }
 
-    // Step 6: Medicare IRMAA Surcharges (based on MAGI from 2 years prior)
-    // MAGI = AGI (standard deduction is NOT subtracted for IRMAA)
+    // Medicare IRMAA Surcharge Processing
     const irmaaBrackets = BASE_DATA_2026.irmaa[filingStatus].map(b => ({
         limit: getInflatedValue(b.limit, inflationRate, inflationYears),
-        surcharge: b.surcharge // surcharges themselves typically inflate, but we keep flat premium add-on structure
+        surcharge: b.surcharge
     }));
 
     let irmaaCost = 0;
-    const lookupMAGI = magi2YearsPrior;
     for (const tier of irmaaBrackets) {
-        if (lookupMAGI <= tier.limit) {
+        if (magi2YearsPrior <= tier.limit) {
             irmaaCost = tier.surcharge;
             break;
         }
     }
 
-    // Totals
-    const totalTax = fedOrdinaryTax + capGainsTax + stateTax + irmaaCost;
+    const totalTax = fedTax + capGainsTax + stateTax + irmaaCost;
 
     return {
-        fedOrdinaryTax,
-        capGainsTax,
+        totalTax,
+        fedTax: fedTax + capGainsTax,
         stateTax,
         irmaaCost,
-        totalTax,
-        taxableSS,
         agi,
-        ordinaryTaxable
+        taxableSS
     };
 }
