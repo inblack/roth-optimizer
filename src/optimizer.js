@@ -5,7 +5,6 @@ export function optimizeRothConversions(params) {
     const startYear = params.startYear;
     const currentAge = params.currentAge;
     const maxAge = 95;
-    const numYears = maxAge - currentAge + 1;
 
     const rmdAge = params.birthYear >= 1960 ? 75 : 73;
     const maxOptimizeAge = Math.min(85, rmdAge + 5);
@@ -30,66 +29,71 @@ export function optimizeRothConversions(params) {
         { type: 'irmaa', index: 3 },
         { type: 'irmaa', index: 4 }
     ];
-    
-    const rateDecimal = params.inflationRate / 100;
 
+    // TRANSLATOR BLOCK: Match friendly selection dropdown labels to runtime evaluation strings
+    let processedPension = params.pensionProfile;
+    if (params.pensionProfile === 'none') processedPension = `(${startYear}-) 0`;
+    if (params.pensionProfile === 'standard') processedPension = `(${startYear + (65 - currentAge)}-) 25000`;
+
+    // Phase 1: Macro Boundary Target Brackets Matrix Sweep Loops
     for (const target of targets) {
         const candidateConversions = {};
         let tempIra = params.iraBalance;
-        
+
         for (let age = currentAge; age < maxOptimizeAge; age++) {
             const year = startYear + (age - currentAge);
-            const inflationYears = Math.max(0, year - 2026);
-            
-            const standardDeduction = getInflatedValue(BASE_DATA_2026.federal.standardDeduction[params.filingStatus], rateDecimal, inflationYears);
-            let targetAGI = 0;
+            const inflationYears = year - startYear;
 
-            if (target.type === 'rate') {
-                const fedBrackets = BASE_DATA_2026.federal[params.filingStatus];
-                const matchingBracket = fedBrackets.find(b => Math.abs(b.rate - target.value) < 0.005) || fedBrackets[1];
-                const maxIncome = getInflatedValue(matchingBracket.max, rateDecimal, inflationYears);
-                targetAGI = maxIncome + standardDeduction;
-            } else if (target.type === 'irmaa') {
-                const irmaaBrackets = BASE_DATA_2026.irmaa[params.filingStatus];
-                const limit = irmaaBrackets[target.index].limit;
-                targetAGI = getInflatedValue(limit, rateDecimal, inflationYears);
-            }
-
-            const pension = parseProfile(params.pensionProfile, year, 0);
+            const pension = parseProfile(processedPension, year, 0);
             const rmd = tempIra / (95 - age + 5); 
             const estimatedCurrentAGI = pension + rmd;
 
-            let conversionAmt = Math.max(0, targetAGI - estimatedCurrentAGI);
-            conversionAmt = Math.min(tempIra, conversionAmt);
+            let targetAGI = 0;
+            if (target.type === 'rate') {
+                const fedBrackets = BASE_DATA_2026.federal[params.filingStatus === 'mfj' ? 'mfj' : 'single'];
+                const bracketIndex = fedBrackets.findIndex(b => b.rate === target.value);
+                const targetBracket = fedBrackets[bracketIndex >= 0 ? bracketIndex : 1];
+                const baseStandardDeduction = params.filingStatus === 'mfj' ? 30000 : 15000;
 
+                targetAGI = getInflatedValue(targetBracket.max, params.inflationRate / 100, inflationYears) +
+                            getInflatedValue(baseStandardDeduction, params.inflationRate / 100, inflationYears);
+            } else if (target.type === 'irmaa') {
+                const irmaaBrackets = BASE_DATA_2026.irmaa[params.filingStatus];
+                const targetTier = irmaaBrackets[Math.min(target.index, irmaaBrackets.length - 1)];
+                targetAGI = getInflatedValue(targetTier.limit, params.inflationRate / 100, inflationYears) - 100;
+            }
+
+            let conversionAmt = Math.max(0, targetAGI - estimatedCurrentAGI);
+            
             if (conversionAmt > 5000) {
                 candidateConversions[year] = Math.round(conversionAmt / 1000) * 1000;
                 tempIra = Math.max(0, tempIra - conversionAmt);
             }
-            tempIra *= (1 + params.annualReturn / 100);
         }
 
-        const candRes = runProjection({ ...params, conversions: candidateConversions });
-        const candScore = candRes[candRes.length - 1].adjustedNetWorth;
-
-        if (candScore > bestScore) {
-            bestScore = candScore;
-            bestConversions = candidateConversions;
+        const res = runProjection({ ...params, conversions: candidateConversions });
+        if (res.length > 0) {
+            const score = res[res.length - 1].adjustedNetWorth;
+            if (score > bestScore) {
+                bestScore = score;
+                bestConversions = candidateConversions;
+            }
         }
     }
 
-    // Coordinate Descent Fine Tuning
+    // Phase 2: Micro-Directional Step Refinement Loop Passes
     let improved = true;
     let iterations = 0;
+    const maxIterations = 5;
     const step = 10000;
 
-    while (improved && iterations < 3) {
+    while (improved && iterations < maxIterations) {
         improved = false;
         for (let age = currentAge; age < maxOptimizeAge; age++) {
             const year = startYear + (age - currentAge);
             const currentVal = bestConversions[year] || 0;
 
-            // Add testing
+            // Micro upside evaluation
             const testAddConversions = { ...bestConversions, [year]: currentVal + step };
             const addRes = runProjection({ ...params, conversions: testAddConversions });
             const addScore = addRes[addRes.length - 1].adjustedNetWorth;
@@ -101,7 +105,7 @@ export function optimizeRothConversions(params) {
                 continue;
             }
 
-            // Subtract testing
+            // Micro downside evaluation
             if (currentVal > 0) {
                 const testSubConversions = { ...bestConversions, [year]: Math.max(0, currentVal - step) };
                 const subRes = runProjection({ ...params, conversions: testSubConversions });

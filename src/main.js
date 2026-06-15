@@ -5,7 +5,8 @@ import {
     updateConversionsTaxChart, 
     updateCashFlowChart, 
     updateAccountBalancesChart, 
-    updateTaxBreakdownChart \n} from './chartManager.js';
+    updateTaxBreakdownChart
+} from './chartManager.js';
 
 // Cache results for parallel scenario visualization switching
 let cachedBaseline = [];
@@ -152,7 +153,7 @@ function renderTable(years) {
             <td>${formatCurrency(y.taxes.stateTax)}</td>
             <td>${formatCurrency(y.taxes.irmaaCost)}</td>
             <td>${formatCurrency(y.livingExpenses)}</td>
-            <td>${formatCurrency(y.surplus)}</td>
+            <td>${formatCurrency(y.surplus Flow)}</td>
             <td>${formatCurrency(y.taxes.agi)}</td>
         `;
         tbody.appendChild(tr);
